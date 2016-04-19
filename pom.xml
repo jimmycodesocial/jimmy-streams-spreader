@@ -1,0 +1,115 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.jimmystreams</groupId>
+    <artifactId>spreader</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0-SNAPSHOT</version>
+
+    <name>Jimmy Streams Spreader</name>
+    <description>Spread the activities extracted from the pool into streams.</description>
+    <url>https://github.com/jimmycodesocial/jimmy-streams-spreader</url>
+    <organization>
+        <name>Jimmy Code Social</name>
+        <url>http://jimmycode.com</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>albertomr86</id>
+            <name>Alberto Menendez Romero</name>
+            <email>albertomr86@gmail.com</email>
+            <url>https://github.com/albertomr86</url>
+            <organization>Jimmy Code Social</organization>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+            <timezone>America/Montevideo</timezone>
+        </developer>
+        <developer>
+            <id>joelmcs6</id>
+            <name>Joel Macias Roque</name>
+            <email>joelmcs6@gmail.com</email>
+            <url>https://github.com/joelmcs6</url>
+            <organization>Jimmy Code Social</organization>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+            <timezone>America/Montevideo</timezone>
+        </developer>
+    </developers>
+
+    <licenses>
+        <license>
+            <name>ISC License </name>
+            <url>https://opensource.org/licenses/ISC</url>
+        </license>
+    </licenses>
+
+    <repositories>
+        <!-- Use modules from github as normal pom -->
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Apache Storm -->
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-core</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- AWS SDK -->
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk</artifactId>
+            <version>1.10.71</version>
+        </dependency>
+
+        <!-- Orientdb -->
+        <dependency>
+            <groupId>com.orientechnologies</groupId>
+            <artifactId>orientdb-core</artifactId>
+            <version>2.1.16</version>
+        </dependency>
+        <dependency>
+            <groupId>com.orientechnologies</groupId>
+            <artifactId>orientdb-enterprise</artifactId>
+            <version>2.1.16</version>
+        </dependency>
+
+        <!-- Redis -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>2.8.1</version>
+            <type>jar</type>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Troubleshooting (logs, monitor, etc)  -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <prerequisites>
+        <maven>3.0.5</maven>
+    </prerequisites>
+</project>
