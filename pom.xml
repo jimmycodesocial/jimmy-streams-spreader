@@ -63,6 +63,7 @@
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
             <version>1.0.0</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- AWS SDK -->
