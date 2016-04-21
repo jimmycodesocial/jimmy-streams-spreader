@@ -12,8 +12,6 @@ import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
-import com.amazonaws.util.json.JSONException;
-import com.amazonaws.util.json.JSONObject;
 
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -22,8 +20,9 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 import org.apache.storm.utils.Utils;
-
 import org.apache.log4j.Logger;
+
+import org.json.JSONObject;
 
 public class SqsPoolSpout extends BaseRichSpout {
     final static Logger logger = Logger.getLogger(SqsPoolSpout.class);
@@ -75,10 +74,11 @@ public class SqsPoolSpout extends BaseRichSpout {
 
         if (message != null) {
             // Parse the message and convert into a tuple
-            Values tuple = messageToStormTuple(message);
+            Values tuple = messageToTuple(message);
 
             // Fail when the message cannot be parsed
             if (tuple == null) {
+                logger.error(String.format("Wrong format for message %s", message.getMessageId()));
                 this.fail(message.getMessageId());
             }
             else {
@@ -107,25 +107,17 @@ public class SqsPoolSpout extends BaseRichSpout {
      *
      * @return Values the tuple
      */
-    private Values messageToStormTuple(Message message) {
+    private Values messageToTuple(Message message) {
         // This is and identifier that SQS generate to handle the message status.
         String receiptHandle = message.getReceiptHandle();
         // Read the message (JSON Body)
         String rawBody = message.getBody();
 
-        JSONObject jsonBody;
-        Values tuple = null;
-
         logger.info(String.format("Processing message with handler %s", receiptHandle));
         logger.info(rawBody);
 
-        try {
-            // Convert the message into a JSON Object
-            jsonBody = new JSONObject(rawBody);
-            tuple = new Values(jsonBody);
-        } catch (JSONException e) {
-            logger.error(String.format("Error %s for message %s", e.getMessage(), message.getMessageId()));
-        }
+        JSONObject jsonBody = new JSONObject(rawBody);
+        Values tuple = new Values(jsonBody);
 
         return tuple;
     }

@@ -106,6 +106,13 @@
             <scope>compile</scope>
         </dependency>
 
+        <!-- Serializer -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20160212</version>
+        </dependency>
+
         <!-- Troubleshooting (logs, monitor, etc)  -->
         <dependency>
             <groupId>log4j</groupId>
