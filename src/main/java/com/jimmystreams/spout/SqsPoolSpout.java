@@ -48,16 +48,19 @@ public class SqsPoolSpout extends BaseRichSpout {
         this.batch = 5;
     }
 
+    @Override
     public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context, SpoutOutputCollector collector) {
         this.collector = collector;
         queue = new LinkedBlockingQueue<>();
         sqs = new AmazonSQSAsyncClient(new ProfileCredentialsProvider());
     }
 
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("activity"));
     }
 
+    @Override
     public void nextTuple() {
         // Look for more messages when the last messages were processed
         if (queue.isEmpty()) {
@@ -168,6 +171,7 @@ public class SqsPoolSpout extends BaseRichSpout {
         this.sleepTime = sleepTime;
     }
 
+    @Override
     public void ack(Object msgId) {
         // Only called in reliable mode.
         try {
@@ -176,6 +180,7 @@ public class SqsPoolSpout extends BaseRichSpout {
         catch (AmazonClientException ignored) { }
     }
 
+    @Override
     public void fail(Object msgId) {
         // Only called in reliable mode.
         try {
@@ -184,6 +189,7 @@ public class SqsPoolSpout extends BaseRichSpout {
         catch (AmazonClientException ignored) { }
     }
 
+    @Override
     public void close() {
         sqs.shutdown();
         // Works around a known bug in the Async clients
