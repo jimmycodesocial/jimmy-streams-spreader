@@ -7,6 +7,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import org.apache.log4j.Logger;
+import org.apache.storm.tuple.Values;
 import org.json.JSONObject;
 
 public class SubscriptionsBolt extends BaseBasicBolt {
@@ -22,5 +23,8 @@ public class SubscriptionsBolt extends BaseBasicBolt {
         // {"id": "<id>", "name": "<name>"}
         JSONObject audience = (JSONObject)input.getValueByField("audience");
         JSONObject activity = (JSONObject)input.getValueByField("activity");
+
+        // TODO: Don't emit the same audience as stream, instead of that, search all subscriptions.
+        collector.emit(new Values(audience, activity));
     }
 }
