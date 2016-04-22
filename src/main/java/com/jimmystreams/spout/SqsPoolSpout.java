@@ -43,7 +43,7 @@ public class SqsPoolSpout extends BaseRichSpout {
     public SqsPoolSpout(String queueUrl, boolean reliable) {
         this.queueUrl = queueUrl;
         this.reliable = reliable;
-        this.sleepTime = 100;
+        this.sleepTime = 5000;
         this.batch = 5;
     }
 
@@ -84,19 +84,22 @@ public class SqsPoolSpout extends BaseRichSpout {
             else {
                 // Process in a reliable mode
                 if (reliable) {
-                    collector.emit(getStreamId(message), tuple, message.getReceiptHandle());
+                    logger.info(String.format("Emit activity in reliable mode for processing. %s", tuple));
+                    collector.emit(tuple, message.getReceiptHandle());
                 }
                 // Give ack anyway
                 else {
+                    logger.info(String.format("Emit activity for processing. %s", tuple));
                     sqs.deleteMessageAsync(new DeleteMessageRequest(queueUrl, message.getReceiptHandle()));
-                    collector.emit(getStreamId(message), tuple);
+                    collector.emit(tuple);
                 }
             }
         }
         // Origin queue and memory queue are empty
         else {
             // The origin queue is empty, go to sleep.
-            Utils.sleep(sleepTime);
+            logger.warn(String.format("No messages to process. Sleep for %d seconds", this.sleepTime));
+            Utils.sleep(this.sleepTime);
         }
     }
 
@@ -167,18 +170,24 @@ public class SqsPoolSpout extends BaseRichSpout {
     public void ack(Object msgId) {
         // Only called in reliable mode.
         try {
+            logger.info(String.format("Ack for %s", msgId));
             sqs.deleteMessageAsync(new DeleteMessageRequest(queueUrl, (String) msgId));
         }
-        catch (AmazonClientException ignored) { }
+        catch (AmazonClientException e) {
+            logger.error(String.format("AWS Exception %s", e.toString()));
+        }
     }
 
     @Override
     public void fail(Object msgId) {
         // Only called in reliable mode.
         try {
+            logger.warn(String.format("Message %s fails", msgId));
             sqs.changeMessageVisibilityAsync(new ChangeMessageVisibilityRequest(queueUrl, (String) msgId, 0));
         }
-        catch (AmazonClientException ignored) { }
+        catch (AmazonClientException e) {
+            logger.error(String.format("AWS Exception %s", e.toString()));
+        }
     }
 
     @Override
