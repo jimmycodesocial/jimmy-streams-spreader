@@ -24,7 +24,7 @@ public class AudienceBolt extends BaseBasicBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("stream", "activity"));
+        declarer.declare(new Fields("audience", "activity"));
     }
 
     @Override
