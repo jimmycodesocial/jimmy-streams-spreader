@@ -6,12 +6,14 @@
 
 package com.jimmystreams.mapper;
 
-import org.apache.log4j.Logger;
 import org.apache.storm.mongodb.common.mapper.MongoMapper;
 import org.apache.storm.tuple.ITuple;
+import org.apache.log4j.Logger;
+
 import org.bson.Document;
 import org.json.JSONObject;
 import com.mongodb.util.JSON;
+
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.Date;
@@ -23,7 +25,7 @@ import java.text.SimpleDateFormat;
  * This mapper requires the presence of fields "stream" and "activity" in the tuple.
  */
 public class ActivityMongoMapper implements MongoMapper {
-    final static Logger logger = Logger.getLogger(ActivityMongoMapper.class);
+    private final static Logger logger = Logger.getLogger(ActivityMongoMapper.class);
 
     @Override
     public Document toDocument(ITuple iTuple) {
