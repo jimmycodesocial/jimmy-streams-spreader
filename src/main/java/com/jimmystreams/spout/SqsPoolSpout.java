@@ -99,7 +99,7 @@ public class SqsPoolSpout extends BaseRichSpout {
         else {
             // The origin queue is empty, go to sleep.
             logger.warn(String.format("No messages to process. Sleep for %d seconds", this.sleepTime));
-            Utils.sleep(this.sleepTime);
+//            Utils.sleep(this.sleepTime);
         }
     }
 
@@ -123,20 +123,6 @@ public class SqsPoolSpout extends BaseRichSpout {
         Values tuple = new Values(jsonBody);
 
         return tuple;
-    }
-
-    /**
-     * Returns the stream on which this spout will emit. By default, it is just
-     * {@code Utils.DEFAULT_STREAM_ID}. Simply override this method to send to
-     * a different stream.
-     *
-     * By using the {@code message} parameter, you can send different messages
-     * to different streams based on context.
-     *
-     * @return the stream on which this spout will emit.
-     */
-    public String getStreamId(Message message) {
-        return Utils.DEFAULT_STREAM_ID;
     }
 
     /**
