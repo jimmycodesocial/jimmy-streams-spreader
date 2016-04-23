@@ -4,35 +4,37 @@
  * ISC Licensed
  */
 
-package com.jimmystreams.mapper;
+package com.jimmystreams.bolt;
 
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.log4j.Logger;
+
 import org.json.JSONObject;
 import redis.clients.jedis.JedisCommands;
 
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+
 import java.util.Date;
 import java.util.Locale;
 
 /**
- * Custom Redis Store Mapper for storing activities in redis.
+ * Custom Redis bolt for storing activities in redis.
  * This mapper use the redis command ZADD to arrange the activities by date.
  */
-public class ActivityRedisMapper extends AbstractRedisBolt {
-    final static Logger logger = Logger.getLogger(ActivityRedisMapper.class);
+public class RedisUpdatesBolt extends AbstractRedisBolt {
+    private final static Logger logger = Logger.getLogger(RedisUpdatesBolt.class);
 
     /**
      * Default constructor.
      *
-     * @param config
+     * @param config The redis connection config.
      */
-    public ActivityRedisMapper(JedisPoolConfig config) {
+    public RedisUpdatesBolt(JedisPoolConfig config) {
         super(config);
     }
 
