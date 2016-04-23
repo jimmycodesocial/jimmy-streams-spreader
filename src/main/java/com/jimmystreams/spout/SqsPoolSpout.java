@@ -1,3 +1,9 @@
+/**
+ * jimmy-streams-api
+ * Copyright(c) 2016 Jimmy Code Social (http://jimmycode.com)
+ * ISC Licensed
+ */
+
 package com.jimmystreams.spout;
 
 import java.util.Map;
@@ -43,7 +49,7 @@ public class SqsPoolSpout extends BaseRichSpout {
     public SqsPoolSpout(String queueUrl, boolean reliable) {
         this.queueUrl = queueUrl;
         this.reliable = reliable;
-        this.sleepTime = 5000;
+        this.sleepTime = 2000;
         this.batch = 5;
     }
 
@@ -99,7 +105,7 @@ public class SqsPoolSpout extends BaseRichSpout {
         else {
             // The origin queue is empty, go to sleep.
             logger.warn(String.format("No messages to process. Sleep for %d seconds", this.sleepTime));
-//            Utils.sleep(this.sleepTime);
+            Utils.sleep(this.sleepTime);
         }
     }
 

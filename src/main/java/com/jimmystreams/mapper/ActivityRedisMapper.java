@@ -1,3 +1,9 @@
+/**
+ * jimmy-streams-api
+ * Copyright(c) 2016 Jimmy Code Social (http://jimmycode.com)
+ * ISC Licensed
+ */
+
 package com.jimmystreams.mapper;
 
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
