@@ -31,16 +31,16 @@ import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
 public class SqsPoolSpout extends BaseRichSpout {
-    final static Logger logger = Logger.getLogger(SqsPoolSpout.class);
+    private final String queueUrl;
+    private int sleepTime = 2000;
+    private int batch = 5;
+    private final boolean reliable;
 
     private SpoutOutputCollector collector;
     private AmazonSQSAsync sqs;
     private LinkedBlockingQueue<Message> queue;
 
-    private final String queueUrl;
-    private final boolean reliable;
-    private int sleepTime;
-    private int batch;
+    private final static Logger logger = Logger.getLogger(SqsPoolSpout.class);
 
     /**
      * @param queueUrl URL for Amazon SQS queue to consume from
@@ -49,15 +49,15 @@ public class SqsPoolSpout extends BaseRichSpout {
     public SqsPoolSpout(String queueUrl, boolean reliable) {
         this.queueUrl = queueUrl;
         this.reliable = reliable;
-        this.sleepTime = 2000;
-        this.batch = 5;
     }
 
     @Override
     public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context, SpoutOutputCollector collector) {
         this.collector = collector;
-        queue = new LinkedBlockingQueue<>();
-        sqs = new AmazonSQSAsyncClient(new ProfileCredentialsProvider());
+        this.queue = new LinkedBlockingQueue<>();
+        this.sqs = new AmazonSQSAsyncClient(new ProfileCredentialsProvider());
+        this.sleepTime = ((Long)conf.get("sqs_sleep_time")).intValue();
+        this.batch = ((Long)conf.get("sqs_batch")).intValue();
     }
 
     @Override
@@ -68,35 +68,43 @@ public class SqsPoolSpout extends BaseRichSpout {
     @Override
     public void nextTuple() {
         // Look for more messages when the last messages were processed
-        if (queue.isEmpty()) {
+        if (this.queue.isEmpty()) {
             // Request the queue for more messages
-            ReceiveMessageResult receiveMessageResult = sqs.receiveMessage(new ReceiveMessageRequest(queueUrl).withMaxNumberOfMessages(this.batch));
+            ReceiveMessageResult receiveMessageResult = this.sqs.receiveMessage(
+                    new ReceiveMessageRequest(this.queueUrl).withMaxNumberOfMessages(this.batch));
+
             // Store the messages locally in memory
-            queue.addAll(receiveMessageResult.getMessages());
+            this.queue.addAll(receiveMessageResult.getMessages());
         }
 
         // Extract one message from the memory queue
-        Message message = queue.poll();
+        Message message = this.queue.poll();
 
         if (message != null) {
+            // Unique identifier for the message.
+            String msgId = message.getMessageId();
+            // Identifier associated with the act of receiving the message.
+            // A new receipt handle is returned every time you receive a message.
+            String msgHandler = message.getReceiptHandle();
+
             // Parse the message and convert into a tuple
             Values tuple = messageToTuple(message);
 
             // Fail when the message cannot be parsed
             if (tuple == null) {
-                logger.error(String.format("Wrong format for message %s", message.getMessageId()));
-                this.fail(message.getMessageId());
+                logger.error(String.format("Wrong format for message with id %s and handler %s", msgId, msgHandler));
+                this.fail(msgHandler);
             }
             else {
                 // Process in a reliable mode
-                if (reliable) {
+                if (this.reliable) {
                     logger.info(String.format("Emit activity in reliable mode for processing. %s", tuple));
-                    collector.emit(tuple, message.getReceiptHandle());
+                    collector.emit(tuple, msgHandler);
                 }
                 // Give ack anyway
                 else {
                     logger.info(String.format("Emit activity for processing. %s", tuple));
-                    sqs.deleteMessageAsync(new DeleteMessageRequest(queueUrl, message.getReceiptHandle()));
+                    this.sqs.deleteMessageAsync(new DeleteMessageRequest(this.queueUrl, msgHandler));
                     collector.emit(tuple);
                 }
             }
@@ -110,19 +118,20 @@ public class SqsPoolSpout extends BaseRichSpout {
     }
 
     /**
-     * Transform a SQS message into a Storm Tuple
+     * Transform a SQS message into a Storm Tuple.
      *
-     * @param message the SQS message
+     * @param message The SQS message.
      *
-     * @return Values the tuple
+     * @return Values The tuple.
      */
     private Values messageToTuple(Message message) {
-        // This is and identifier that SQS generate to handle the message status.
-        String receiptHandle = message.getReceiptHandle();
+        String msgHandler = message.getReceiptHandle();
+        String msgId = message.getMessageId();
+
         // Read the message (JSON Body)
         String rawBody = message.getBody();
 
-        logger.info(String.format("Processing message with handler %s", receiptHandle));
+        logger.info(String.format("Processing message with id %s and handler %s", msgId, msgHandler));
         logger.info(rawBody);
 
         JSONObject jsonBody = new JSONObject(rawBody);
@@ -133,16 +142,15 @@ public class SqsPoolSpout extends BaseRichSpout {
 
     /**
      * Returns the number of milliseconds the spout will wait before making
-     * another call to SQS when the previous call came back empty. Defaults to
-     * {@code 100}.
+     * another call to SQS when the previous call came back empty.
      *
      * Since Amazon charges per SQS request, you can use this parameter to
      * control costs for lower-volume queues.
      *
-     * @return the number of milliseconds the spout will wait between SQS calls.
+     * @return The number of milliseconds the spout will wait between SQS calls.
      */
     public int getSleepTime() {
-        return sleepTime;
+        return this.sleepTime;
     }
 
     /**
@@ -152,18 +160,18 @@ public class SqsPoolSpout extends BaseRichSpout {
      * Since Amazon charges per SQS request, you can use this parameter to
      * control costs for lower-volume queues.
      *
-     * @param sleepTime the number of milliseconds the spout will wait between SQS calls.
+     * @param sleepTime The number of milliseconds the spout will wait between SQS calls.
      */
     public void setSleepTime(int sleepTime) {
         this.sleepTime = sleepTime;
     }
 
     @Override
-    public void ack(Object msgId) {
+    public void ack(Object msgHandler) {
         // Only called in reliable mode.
         try {
-            logger.info(String.format("Ack for %s", msgId));
-            sqs.deleteMessageAsync(new DeleteMessageRequest(queueUrl, (String) msgId));
+            logger.info(String.format("Ack for %s", msgHandler));
+            this.sqs.deleteMessageAsync(new DeleteMessageRequest(this.queueUrl, (String) msgHandler));
         }
         catch (AmazonClientException e) {
             logger.error(String.format("AWS Exception %s", e.toString()));
@@ -171,11 +179,11 @@ public class SqsPoolSpout extends BaseRichSpout {
     }
 
     @Override
-    public void fail(Object msgId) {
+    public void fail(Object msgHandler) {
         // Only called in reliable mode.
         try {
-            logger.warn(String.format("Message %s fails", msgId));
-            sqs.changeMessageVisibilityAsync(new ChangeMessageVisibilityRequest(queueUrl, (String) msgId, 0));
+            logger.warn(String.format("Message %s fails", msgHandler));
+            this.sqs.changeMessageVisibilityAsync(new ChangeMessageVisibilityRequest(this.queueUrl, (String) msgHandler, 0));
         }
         catch (AmazonClientException e) {
             logger.error(String.format("AWS Exception %s", e.toString()));
@@ -184,7 +192,7 @@ public class SqsPoolSpout extends BaseRichSpout {
 
     @Override
     public void close() {
-        sqs.shutdown();
+        this.sqs.shutdown();
         // Works around a known bug in the Async clients
         // @see https://forums.aws.amazon.com/thread.jspa?messageID=305371
         ((AmazonSQSAsyncClient) sqs).getExecutorService().shutdownNow();

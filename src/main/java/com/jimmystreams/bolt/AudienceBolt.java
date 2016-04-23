@@ -8,9 +8,8 @@ package com.jimmystreams.bolt;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.BasicOutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseBasicBolt;
+import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
@@ -28,7 +27,7 @@ import java.util.Map;
  * Bolt that listen for activities and extract the implicit and explicit audiences.
  * This bolt will emit a copy of the activity per each audience identified.
  */
-public class AudienceBolt extends BaseBasicBolt {
+public class AudienceBolt extends BaseRichBolt {
     /**
      * These fields represent the implicit audience.
      */
@@ -47,20 +46,20 @@ public class AudienceBolt extends BaseBasicBolt {
     /**
      * Logger instance.
      */
-    final static Logger logger = Logger.getLogger(AudienceBolt.class);
+    private final static Logger logger = Logger.getLogger(AudienceBolt.class);
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("audience", "activity"));
     }
 
+    @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        super.prepare(stormConf, context);
         this._collector = collector;
     }
 
     @Override
-    public void execute(Tuple input, BasicOutputCollector collector) {
+    public void execute(Tuple input) {
         // Activity JSON.
         JSONObject activity = (JSONObject)input.getValueByField("activity");
         String activity_id = activity.getString("aid");
@@ -85,7 +84,7 @@ public class AudienceBolt extends BaseBasicBolt {
 
                 // Emit the tuple <stream, activity>
                 logger.info(String.format("Audience: %s for activity: %s", stream, activity_id));
-                this._collector.emit(new Values(new JSONObject(stream), activity));
+                this._collector.emit(input, new Values(new JSONObject(stream), activity));
             }
         }
 
