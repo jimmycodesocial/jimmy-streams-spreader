@@ -28,8 +28,7 @@ import java.util.Locale;
  */
 public class RedisUpdatesBolt extends AbstractRedisBolt {
     /**
-     * Size of the storage.
-     * Set to zero for no limits.
+     * Size of the storage. Set to zero for no limits.
      */
     private int maxEntries = 0;
 
@@ -57,11 +56,9 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
 
     @Override
     public void execute(Tuple input) {
-        JSONObject stream = (JSONObject)input.getValueByField("stream");
+        String stream = input.getStringByField("stream");
         JSONObject activity = (JSONObject)input.getValueByField("activity");
-
         String activity_id = activity.getString("aid");
-        String stream_name = stream.getString("name");
 
         // Parse the published date.
         DateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'", Locale.ENGLISH);
@@ -79,13 +76,13 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
         if (published != null) {
             // ZADD command will add a value to the key using an score for sorting.
             // The score used is the timestamp of when the activity was published.
-            logger.info(String.format("Storing activity %s in recent list of stream %s", activity_id, stream_name));
-            jedisCommand.zadd(stream.getString("name"), published.getTime(), activity.toString());
+            logger.info(String.format("Storing activity %s in recent list of stream %s", activity_id, stream));
+            jedisCommand.zadd(stream, published.getTime(), activity.toString());
 
-            // Capped the storage.
+            // Limit the storage.
             if (this.maxEntries != 0) {
                 int size = -maxEntries;
-                jedisCommand.zremrangeByRank(stream.getString("name"), size, size-2);
+                jedisCommand.zremrangeByRank(stream, size, size-2);
             }
         }
 

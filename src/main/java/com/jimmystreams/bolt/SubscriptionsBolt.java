@@ -23,9 +23,6 @@ import java.util.Map;
  * This bolt will emit a copy of the activity per each stream subscribed.
  */
 public class SubscriptionsBolt extends BaseRichBolt {
-    /**
-     * Collector to ACK tuples.
-     */
     private OutputCollector _collector;
 
     @Override
@@ -40,8 +37,7 @@ public class SubscriptionsBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple input) {
-        // {"id": "<id>", "name": "<name>"}
-        JSONObject audience = (JSONObject)input.getValueByField("audience");
+        String audience = input.getStringByField("stream");
         JSONObject activity = (JSONObject)input.getValueByField("activity");
 
         // TODO: Don't emit the same audience as stream, instead of that, search all subscriptions.

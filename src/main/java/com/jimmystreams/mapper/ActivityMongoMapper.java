@@ -28,12 +28,10 @@ public class ActivityMongoMapper implements MongoMapper {
     private final static Logger logger = Logger.getLogger(ActivityMongoMapper.class);
 
     @Override
-    public Document toDocument(ITuple iTuple) {
-        JSONObject stream = (JSONObject)iTuple.getValueByField("stream");
-        JSONObject activity = (JSONObject)iTuple.getValueByField("activity");
-
+    public Document toDocument(ITuple tuple) {
+        String stream = tuple.getStringByField("stream");
+        JSONObject activity = (JSONObject)tuple.getValueByField("activity");
         String activity_id = activity.getString("aid");
-        String stream_name = stream.getString("name");
 
         DateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'", Locale.ENGLISH);
         Date published = null;
@@ -44,15 +42,15 @@ public class ActivityMongoMapper implements MongoMapper {
             logger.error(String.format("Error mapping activity %s to redis: %s", activity_id, e.toString()));
         }
 
-        // Extract fields "aid" and "published" from the activity and save at document-level.
+        // Extract fields "aid" and "published" from the activity and save them at document-level.
         // This is for easing the queries.
         // The field "published" was converted to Date, so MongoDB can store it correctly.
         Document doc = new Document("aid", activity.getString("aid"))
                 .append("published", published)
-                .append("stream", JSON.parse(stream.toString()))
+                .append("stream", stream)
                 .append("activity", JSON.parse(activity.toString()));
 
-        logger.info(String.format("Storing activity %s in historical list of stream %s", activity_id, stream_name));
+        logger.info(String.format("Storing activity %s in historical list of stream %s", activity_id, stream));
 
         return doc;
     }

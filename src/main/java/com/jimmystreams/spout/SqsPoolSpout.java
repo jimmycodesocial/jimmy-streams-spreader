@@ -6,9 +6,6 @@
 
 package com.jimmystreams.spout;
 
-import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.sqs.AmazonSQSAsync;
@@ -29,6 +26,9 @@ import org.apache.storm.utils.Utils;
 import org.apache.log4j.Logger;
 
 import org.json.JSONObject;
+
+import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class SqsPoolSpout extends BaseRichSpout {
     private final String queueUrl;
