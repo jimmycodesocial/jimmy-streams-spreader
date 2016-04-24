@@ -27,7 +27,24 @@ import java.util.Locale;
  * This mapper use the redis command ZADD to arrange the activities by date.
  */
 public class RedisUpdatesBolt extends AbstractRedisBolt {
+    /**
+     * Size of the storage.
+     * Set to zero for no limits.
+     */
+    private int maxEntries = 0;
+
     private final static Logger logger = Logger.getLogger(RedisUpdatesBolt.class);
+
+    /**
+     * Default constructor.
+     *
+     * @param config     The redis connection config.
+     * @param maxEntries The size of the storage.
+     */
+    public RedisUpdatesBolt(JedisPoolConfig config, int maxEntries) {
+        super(config);
+        this.maxEntries = maxEntries;
+    }
 
     /**
      * Default constructor.
@@ -35,7 +52,7 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
      * @param config The redis connection config.
      */
     public RedisUpdatesBolt(JedisPoolConfig config) {
-        super(config);
+        this(config, 0);
     }
 
     @Override
@@ -64,6 +81,12 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
             // The score used is the timestamp of when the activity was published.
             logger.info(String.format("Storing activity %s in recent list of stream %s", activity_id, stream_name));
             jedisCommand.zadd(stream.getString("name"), published.getTime(), activity.toString());
+
+            // Capped the storage.
+            if (this.maxEntries != 0) {
+                int size = -maxEntries;
+                jedisCommand.zremrangeByRank(stream.getString("name"), size, size-2);
+            }
         }
 
         // Acknowledge the tuple.

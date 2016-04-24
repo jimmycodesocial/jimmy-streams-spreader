@@ -58,8 +58,9 @@ class SpreaderTopology {
 
         // Store the most recent activities for the streams.
         // This bolt should be processed as soon as possible.
+        // Limit streams up-to 1000 entries.
         builder.setBolt("recent",
-                new RedisUpdatesBolt(getRedisConfig()), 8)
+                new RedisUpdatesBolt(getRedisConfig(), 1000), 8)
                 .setNumTasks(16)
                 .shuffleGrouping("subscriptions");
 
