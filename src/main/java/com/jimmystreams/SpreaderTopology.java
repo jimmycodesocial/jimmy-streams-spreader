@@ -45,8 +45,8 @@ class SpreaderTopology {
         // Look for all streams subscribed to the audience.
         // Read subscriptions from OrientDB database.
         builder.setBolt("subscriptions",
-                new SubscriptionsBolt(), 2)
-                .setNumTasks(4)
+                new SubscriptionsBolt(getOrientDBDsn(), getOrientDBUser(), getOrientDBPassword()), 3)
+                .setNumTasks(6)
                 .shuffleGrouping("audience");
 
         // Store the activity as historical for the streams.
@@ -128,6 +128,33 @@ class SpreaderTopology {
     }
 
     /**
+     * OrientDB connection string.
+     *
+     * @return The connection string.
+     */
+    private static String getOrientDBDsn() {
+        return prop.getProperty("orientdb_dsn");
+    }
+
+    /**
+     * OrientDB authentication user.
+     *
+     * @return The user.
+     */
+    private static String getOrientDBUser() {
+        return prop.getProperty("orientdb_user");
+    }
+
+    /**
+     * OrientDB authentication password.
+     *
+     * @return The password.
+     */
+    private static String getOrientDBPassword() {
+        return prop.getProperty("orientdb_password");
+    }
+
+    /**
      * Runtime topology configuration.
      *
      * @return The config
@@ -139,9 +166,12 @@ class SpreaderTopology {
         conf.setNumWorkers(Integer.valueOf(prop.getProperty("topology_workers")));
         conf.setMaxSpoutPending(Integer.valueOf(prop.getProperty("topology_max_spout_pending")));
 
-        // Spout interaction with SQS queue
+        // Spout interaction with SQS queue.
         conf.put("sqs_sleep_time", Integer.valueOf(prop.getProperty("sqs_sleep_time")));
         conf.put("sqs_batch", Integer.valueOf(prop.getProperty("sqs_batch")));
+
+        // Size of requests to OrientDB.
+        conf.put("orientdb_batch", Integer.valueOf(prop.getProperty("orientdb_batch")));
 
         return conf;
     }
