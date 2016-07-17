@@ -31,7 +31,7 @@ import java.util.Map;
  * see: http://activitystrea.ms/specs/json/targeting/1.0/#properties
  */
 public class AudienceBolt extends BaseRichBolt {
-    private String[] implicitAudiences = {"actor", "object", "target"};
+    private String[] implicitAudiences = {"actor"};
     private String[] explicitAudiences = {"to", "bto", "cc", "bcc"};
     private OutputCollector _collector;
 
