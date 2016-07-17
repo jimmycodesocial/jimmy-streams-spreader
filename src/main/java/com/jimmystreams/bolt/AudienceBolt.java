@@ -26,6 +26,9 @@ import java.util.Map;
  *
  * Implicit audience fields: "actor", "object", "target"
  * Explicit audience fields: "to", "bto", "cc", "bcc"
+ *
+ * see: http://activitystrea.ms/specs/json/1.0/#activity
+ * see: http://activitystrea.ms/specs/json/targeting/1.0/#properties
  */
 public class AudienceBolt extends BaseRichBolt {
     private String[] implicitAudiences = {"actor", "object", "target"};
