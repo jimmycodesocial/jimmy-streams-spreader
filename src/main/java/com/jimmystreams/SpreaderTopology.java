@@ -187,7 +187,7 @@ class SpreaderTopology {
         conf.put("sqs_batch", Integer.valueOf(prop.getProperty("sqs_batch")));
 
         // Size of requests to OrientDB.
-        conf.put("orientdb_batch", Integer.valueOf(prop.getProperty("orientdb_batch")));
+        conf.put("stream_orientdb_batch", Integer.valueOf(prop.getProperty("stream_orientdb_batch")));
 
         return conf;
     }

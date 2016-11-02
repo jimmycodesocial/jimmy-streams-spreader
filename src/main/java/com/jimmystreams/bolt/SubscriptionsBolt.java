@@ -54,8 +54,7 @@ public class SubscriptionsBolt extends BaseRichBolt {
     @Override
     public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
         this._collector = collector;
-        this.batch = ((Long)conf.get("orientdb_batch")).intValue();
-
+        this.batch = ((Long)conf.get("stream_orientdb_batch")).intValue();
         this._connection = new ODatabaseDocumentTx(this.dsn);
         this._connection.open(this.user, this.password);
     }
