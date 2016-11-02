@@ -38,7 +38,6 @@ public class SocialActivityBolt extends BaseRichBolt
         this.dsn = dsn;
         this.user = user;
         this.password = password;
-        this.context = new ActivityContext();
     }
 
     private final static Logger logger = Logger.getLogger(SocialActivityBolt.class);
@@ -49,6 +48,7 @@ public class SocialActivityBolt extends BaseRichBolt
         try {
             this._collector = outputCollector;
             this.graph = OrientDBGraph.create(this.dsn, this.user, this.password);
+            this.context = new ActivityContext();
         }
         catch (IOException e)
         {
