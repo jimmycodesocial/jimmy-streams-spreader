@@ -16,6 +16,7 @@ import com.jimmystreams.spout.SqsPoolSpout;
 import com.jimmystreams.bolt.AudienceBolt;
 import com.jimmystreams.bolt.SubscriptionsBolt;
 import com.jimmystreams.bolt.RedisUpdatesBolt;
+import com.jimmystreams.bolt.SocialActivityBolt;
 import com.jimmystreams.mapper.ActivityMongoMapper;
 
 import java.io.IOException;
@@ -42,11 +43,26 @@ class SpreaderTopology {
                 new AudienceBolt(), 1)
                 .shuffleGrouping("activities");
 
+        // Save users interactions into the Social Graph
+        String socialGraph = prop.getProperty("social_graph");
+        builder.setBolt("social",
+                new SocialActivityBolt(
+                        getOrientDBDsn(socialGraph),
+                        getOrientDBUser(socialGraph),
+                        getOrientDBPassword(socialGraph)
+                ), 1)
+                .shuffleGrouping("activities");
+
         // Look for all streams subscribed to the audience.
         // Read subscriptions from OrientDB database.
+        String streamGraph = prop.getProperty("stream_graph");
         builder.setBolt("subscriptions",
-                new SubscriptionsBolt(), 2)
-                .setNumTasks(4)
+                new SubscriptionsBolt(
+                        getOrientDBDsn(streamGraph),
+                        getOrientDBUser(streamGraph),
+                        getOrientDBPassword(streamGraph)
+                ), 3)
+                .setNumTasks(6)
                 .shuffleGrouping("audience");
 
         // Store the activity as historical for the streams.
@@ -128,6 +144,33 @@ class SpreaderTopology {
     }
 
     /**
+     * OrientDB connection string.
+     *
+     * @return The connection string.
+     */
+    private static String getOrientDBDsn(String graph) {
+        return prop.getProperty(String.format("%s_orientdb_dsn", graph));
+    }
+
+    /**
+     * OrientDB authentication user.
+     *
+     * @return The user.
+     */
+    private static String getOrientDBUser(String graph) {
+        return prop.getProperty(String.format("%s_orientdb_user", graph));
+    }
+
+    /**
+     * OrientDB authentication password.
+     *
+     * @return The password.
+     */
+    private static String getOrientDBPassword(String graph) {
+        return prop.getProperty(String.format("%s_orientdb_password", graph));
+    }
+
+    /**
      * Runtime topology configuration.
      *
      * @return The config
@@ -139,9 +182,12 @@ class SpreaderTopology {
         conf.setNumWorkers(Integer.valueOf(prop.getProperty("topology_workers")));
         conf.setMaxSpoutPending(Integer.valueOf(prop.getProperty("topology_max_spout_pending")));
 
-        // Spout interaction with SQS queue
+        // Spout interaction with SQS queue.
         conf.put("sqs_sleep_time", Integer.valueOf(prop.getProperty("sqs_sleep_time")));
         conf.put("sqs_batch", Integer.valueOf(prop.getProperty("sqs_batch")));
+
+        // Size of requests to OrientDB.
+        conf.put("orientdb_batch", Integer.valueOf(prop.getProperty("orientdb_batch")));
 
         return conf;
     }

@@ -9,7 +9,7 @@ package com.jimmystreams.bolt;
 
 
 import com.jimmystreams.social.ActivityContext;
-import com.jimmystreams.social.OrientDBConnection;
+import com.jimmystreams.social.OrientDBGraph;
 import com.jimmystreams.social.strategies.*;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import org.apache.log4j.Logger;
@@ -30,6 +30,17 @@ public class SocialActivityBolt extends BaseRichBolt
     private ActivityContext context;
     private OutputCollector _collector;
 
+    private String dsn;
+    private String user;
+    private String password;
+
+    public SocialActivityBolt(String dsn, String user, String password) {
+        this.dsn = dsn;
+        this.user = user;
+        this.password = password;
+        this.context = new ActivityContext();
+    }
+
     private final static Logger logger = Logger.getLogger(SocialActivityBolt.class);
 
     @Override
@@ -37,8 +48,7 @@ public class SocialActivityBolt extends BaseRichBolt
     {
         try {
             this._collector = outputCollector;
-            graph = OrientDBConnection.getGraph();
-            context = new ActivityContext();
+            this.graph = OrientDBGraph.create(this.dsn, this.user, this.password);
         }
         catch (IOException e)
         {
@@ -59,30 +69,30 @@ public class SocialActivityBolt extends BaseRichBolt
         String strategy = activityVerb;
         switch (activityVerb) {
             case "publish":
-                context.setVerbStrategy(new PublishVerbStrategy(graph));
+                context.setVerbStrategy(new PublishVerbStrategy(this.graph));
                 break;
             case "follow":
-                context.setVerbStrategy(new FollowVerbStrategy(graph));
+                context.setVerbStrategy(new FollowVerbStrategy(this.graph));
                 break;
             case "comment":
-                context.setVerbStrategy(new CommentVerbStrategy(graph));
+                context.setVerbStrategy(new CommentVerbStrategy(this.graph));
                 break;
             case "read":
-                context.setVerbStrategy(new ReadVerbStrategy(graph));
+                context.setVerbStrategy(new ReadVerbStrategy(this.graph));
                 break;
             case "share":
-                context.setVerbStrategy(new ShareVerbStrategy(graph));
+                context.setVerbStrategy(new ShareVerbStrategy(this.graph));
                 break;
             case "review":
-                context.setVerbStrategy(new ReviewVerbStrategy(graph));
+                context.setVerbStrategy(new ReviewVerbStrategy(this.graph));
                 break;
             case "upvote" :
             case "downvote" :
-                context.setVerbStrategy(new VoteVerbStrategy(graph));
+                context.setVerbStrategy(new VoteVerbStrategy(this.graph));
                 break;
             default:
                 strategy = "default";
-                context.setVerbStrategy(new NoStrategy(graph));
+                context.setVerbStrategy(new NoStrategy(this.graph));
         }
 
         logger.info(String.format("%s strategy selected", strategy));
