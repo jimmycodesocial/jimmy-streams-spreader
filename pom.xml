@@ -137,16 +137,6 @@
         <!-- Orientdb -->
         <dependency>
             <groupId>com.orientechnologies</groupId>
-            <artifactId>orientdb-core</artifactId>
-            <version>2.1.16</version>
-        </dependency>
-        <dependency>
-            <groupId>com.orientechnologies</groupId>
-            <artifactId>orientdb-client</artifactId>
-            <version>2.1.16</version>
-        </dependency>
-        <dependency>
-            <groupId>com.orientechnologies</groupId>
             <artifactId>orientdb-graphdb</artifactId>
             <version>2.2.8</version>
         </dependency>
