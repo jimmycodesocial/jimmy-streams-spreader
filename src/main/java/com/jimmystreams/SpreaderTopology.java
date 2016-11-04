@@ -6,6 +6,7 @@
 
 package com.jimmystreams;
 
+import com.jimmystreams.bolt.*;
 import org.apache.storm.Config;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.topology.TopologyBuilder;
@@ -13,10 +14,6 @@ import org.apache.storm.mongodb.bolt.MongoInsertBolt;
 import org.apache.storm.LocalCluster;
 
 import com.jimmystreams.spout.SqsPoolSpout;
-import com.jimmystreams.bolt.AudienceBolt;
-import com.jimmystreams.bolt.SubscriptionsBolt;
-import com.jimmystreams.bolt.RedisUpdatesBolt;
-import com.jimmystreams.bolt.SocialActivityBolt;
 import com.jimmystreams.mapper.ActivityMongoMapper;
 
 import java.io.IOException;
@@ -43,6 +40,24 @@ class SpreaderTopology {
                 new AudienceBolt(), 1)
                 .shuffleGrouping("activities");
 
+        String streamGraph = prop.getProperty("stream_graph");
+        // Extract the notification audience from the activity.
+        builder.setBolt("notification_audience",
+                new NotificationAudienceBolt(
+                        getOrientDBDsn(streamGraph),
+                        getOrientDBUser(streamGraph),
+                        getOrientDBPassword(streamGraph)
+                ), 1)
+                .shuffleGrouping("activities");
+
+        // Save the notification in MongoDB
+        builder.setBolt("notification_historic",
+                new NotificationMongoDealerBolt(
+                        getMongoDBDsn(),
+                        getMongoDBNotificationsCollection()
+                ), 1)
+                .shuffleGrouping("notification_audience");
+
         // Save users interactions into the Social Graph
         String socialGraph = prop.getProperty("social_graph");
         builder.setBolt("social",
@@ -55,7 +70,6 @@ class SpreaderTopology {
 
         // Look for all streams subscribed to the audience.
         // Read subscriptions from OrientDB database.
-        String streamGraph = prop.getProperty("stream_graph");
         builder.setBolt("subscriptions",
                 new SubscriptionsBolt(
                         getOrientDBDsn(streamGraph),
@@ -68,7 +82,7 @@ class SpreaderTopology {
         // Store the activity as historical for the streams.
         // This bolt can have a little delay storing the activities.
         builder.setBolt("historical",
-                new MongoInsertBolt(getMongoDBDsn(), getMongoDBCollection(), new ActivityMongoMapper()), 4)
+                new MongoInsertBolt(getMongoDBDsn(), getMongoDBActivitiesCollection(), new ActivityMongoMapper()), 4)
                 .setNumTasks(8)
                 .shuffleGrouping("subscriptions");
 
@@ -112,8 +126,17 @@ class SpreaderTopology {
      *
      * @return The MongoDB collection name
      */
-    private static String getMongoDBCollection() {
-        return prop.getProperty("mongodb_collection");
+    private static String getMongoDBActivitiesCollection() {
+        return prop.getProperty("mongodb_activities_collection");
+    }
+
+    /**
+     * MongoDB collection where activities will be stored.
+     *
+     * @return The MongoDB collection name
+     */
+    private static String getMongoDBNotificationsCollection() {
+        return prop.getProperty("mongodb_notifications_collection");
     }
 
     /**
