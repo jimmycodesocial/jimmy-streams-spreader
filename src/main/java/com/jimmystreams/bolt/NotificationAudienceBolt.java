@@ -19,11 +19,6 @@ public class NotificationAudienceBolt extends SubscriptionsBolt {
     }
 
     @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this._collector = outputCollector;
-    }
-
-    @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declare(new Fields("user", "activity"));
     }

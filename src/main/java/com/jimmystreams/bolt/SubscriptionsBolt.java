@@ -28,16 +28,16 @@ import java.util.Map;
  * Bolt that listen for audiences and retrieve the list of streams subscribed to the audience.
  * This bolt will emit a copy of the activity per each stream subscribed.
  */
-public class SubscriptionsBolt extends BaseRichBolt {
+    public class SubscriptionsBolt extends BaseRichBolt {
     private String dsn;
     private String user;
     private String password;
 
-    private int batch;
     private ODatabaseDocumentTx _connection;
-    private OutputCollector _collector;
+    protected int batch;
+    protected OutputCollector _collector;
 
-    private final static Logger logger = Logger.getLogger(SubscriptionsBolt.class);
+    protected final static Logger logger = Logger.getLogger(SubscriptionsBolt.class);
 
     public SubscriptionsBolt(String dsn, String user, String password) {
         this.dsn = dsn;
@@ -70,7 +70,7 @@ public class SubscriptionsBolt extends BaseRichBolt {
         List<ODocument> results;
 
         do {
-            results = paginateSubscriptions(audience, page, this.batch);
+            results = paginateSubscriptions(audience, false, page, this.batch);
             page++;
             for (ODocument o : results) {
                 this._collector.emit(input, new Values(o.<String>field("id"), activity));
@@ -80,10 +80,10 @@ public class SubscriptionsBolt extends BaseRichBolt {
         this._collector.ack(input);
     }
 
-    private List<ODocument> paginateSubscriptions(String stream, int page, int amount) {
+    protected List<ODocument> paginateSubscriptions(String stream, boolean notification, int page, int amount) {
         Map<String, Object> params = new HashMap<>();
         params.put("starter", stream);
-        params.put("notification", false);
+        params.put("notification", notification);
         params.put("offset", page * amount);
         params.put("quantity", amount);
 
