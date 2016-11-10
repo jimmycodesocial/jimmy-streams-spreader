@@ -58,6 +58,13 @@ class SpreaderTopology {
                 ), 1)
                 .shuffleGrouping("notification_audience");
 
+        // Publish Notification in AWS SNS
+        builder.setBolt("publish_notification",
+                new SNSMessageDealerBolt(
+                        getSNSNotificationTopic()
+                ), 1)
+                .shuffleGrouping("notification_historic");
+
         // Save users interactions into the Social Graph
         String socialGraph = prop.getProperty("social_graph");
         builder.setBolt("social",
@@ -191,6 +198,16 @@ class SpreaderTopology {
      */
     private static String getOrientDBPassword(String graph) {
         return prop.getProperty(String.format("%s_orientdb_password", graph));
+    }
+
+
+    /**
+     * AWS SNS Notification Topic
+     *
+     * @return The password.
+     */
+    private static String getSNSNotificationTopic() {
+        return prop.getProperty(String.format("sns_notification_topic"));
     }
 
     /**
