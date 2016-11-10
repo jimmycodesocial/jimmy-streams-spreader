@@ -1,5 +1,6 @@
 package com.jimmystreams.bolt;
 
+import com.amazonaws.services.dynamodbv2.document.utils.ValueList;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
@@ -22,6 +23,8 @@ import java.util.Map;
 public class NotificationMongoDealerBolt extends BaseRichBolt{
 
     private static final int TIME_WINDOW_SIZE = 12; //12 hrs windows size
+
+    private static final String NOTIFICATION_MESSAGE_TYPE = "notification";
 
     private OutputCollector collector;
     private MongoClient client;
@@ -47,7 +50,7 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declare(new Fields("notification"));
+        outputFieldsDeclarer.declare(new Fields("user", "messageType"));
 
     }
 
@@ -64,7 +67,7 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
 
         this.collection.findOneAndUpdate(filters, updatedNotification, options);
 
-        // emit tuple
+        this.collector.emit(tuple, new Values(user, NotificationMongoDealerBolt.NOTIFICATION_MESSAGE_TYPE));
 
         this.collector.ack(tuple);
     }
@@ -87,7 +90,7 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
 
         Document updated = (new Document())
                 .append("user", user)
-                .append("type", activity.getString("type"))
+                .append("type", activity.getString("verb"))
                 .append("object", activity.get("object"))
                 .append("updatedAt", cal.getTime())
                 .append("$inc", new Document("times", 1)) //increment times aggregated
