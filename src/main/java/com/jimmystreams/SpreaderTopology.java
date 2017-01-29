@@ -8,6 +8,7 @@ package com.jimmystreams;
 
 import com.jimmystreams.bolt.*;
 import org.apache.storm.Config;
+import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.mongodb.bolt.MongoInsertBolt;
@@ -15,9 +16,13 @@ import org.apache.storm.LocalCluster;
 
 import com.jimmystreams.spout.SqsPoolSpout;
 import com.jimmystreams.mapper.ActivityMongoMapper;
+import redis.clients.jedis.HostAndPort;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.HashSet;
 import java.util.Properties;
+import java.util.Set;
 
 class SpreaderTopology {
     private static Properties prop = new Properties();
@@ -58,11 +63,9 @@ class SpreaderTopology {
                 ), 1)
                 .shuffleGrouping("notification_audience");
 
-        // Publish Notification in AWS SNS
+        // Publish notification through Redis
         builder.setBolt("publish_notification",
-                new SNSMessageDealerBolt(
-                        getSNSNotificationTopic()
-                ), 1)
+                new NotificationRedisDealerBolt(getRedisClusterInitialNodes()), 1)
                 .shuffleGrouping("notification_historic");
 
         // Save users interactions into the Social Graph
@@ -97,9 +100,14 @@ class SpreaderTopology {
         // This bolt should be processed as soon as possible.
         // Limit streams up-to 1000 entries.
         builder.setBolt("recent",
-                new RedisUpdatesBolt(getRedisConfig(), 1000), 8)
+                new RedisUpdatesBolt(getRedisClusterConfig(), 1000), 8)
                 .setNumTasks(16)
                 .shuffleGrouping("subscriptions");
+
+        builder.setBolt("publish_notification",
+                new NotificationRedisDealerBolt(getRedisClusterInitialNodes()), 1)
+                .shuffleGrouping("recent");
+
 
         // Submit the topology
         LocalCluster cluster = new LocalCluster();
@@ -171,6 +179,29 @@ class SpreaderTopology {
         }
 
         return configBuilder.build();
+    }
+
+    /**
+     * Configuration for redis cluster using Jedis client.
+     *
+     * @return The redis configuration.
+     */
+    private static JedisClusterConfig getRedisClusterConfig() {
+        JedisClusterConfig.Builder configBuilder = new JedisClusterConfig.Builder();
+
+        Set<InetSocketAddress> nodes = new HashSet<>();
+        nodes.add(new InetSocketAddress(prop.getProperty("redis_host"), Integer.valueOf(prop.getProperty("redis_port"))));
+
+        configBuilder.setNodes(nodes);
+
+        return configBuilder.build();
+    }
+
+    private static Set<HostAndPort> getRedisClusterInitialNodes() {
+        Set<HostAndPort> nodes = new HashSet<>();
+        nodes.add(new HostAndPort(prop.getProperty("redis_host"), Integer.valueOf(prop.getProperty("redis_port"))));
+
+        return nodes;
     }
 
     /**

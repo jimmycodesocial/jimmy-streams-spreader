@@ -7,11 +7,14 @@
 package com.jimmystreams.bolt;
 
 import org.apache.storm.redis.bolt.AbstractRedisBolt;
+import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.topology.OutputFieldsDeclarer;
+import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.log4j.Logger;
 
+import org.apache.storm.tuple.Values;
 import org.json.JSONObject;
 import redis.clients.jedis.JedisCommands;
 
@@ -32,6 +35,8 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
      */
     private int maxEntries = 0;
 
+    private static final String NOTIFICATION_MESSAGE_TYPE = "timeline";
+
     private final static Logger logger = Logger.getLogger(RedisUpdatesBolt.class);
 
     /**
@@ -40,7 +45,7 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
      * @param config     The redis connection config.
      * @param maxEntries The size of the storage.
      */
-    public RedisUpdatesBolt(JedisPoolConfig config, int maxEntries) {
+    public RedisUpdatesBolt(JedisClusterConfig config, int maxEntries) {
         super(config);
         this.maxEntries = maxEntries;
     }
@@ -50,7 +55,7 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
      *
      * @param config The redis connection config.
      */
-    public RedisUpdatesBolt(JedisPoolConfig config) {
+    public RedisUpdatesBolt(JedisClusterConfig config) {
         this(config, 0);
     }
 
@@ -86,6 +91,8 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
             }
         }
 
+        this.collector.emit(input, new Values(stream, RedisUpdatesBolt.NOTIFICATION_MESSAGE_TYPE));
+
         // Acknowledge the tuple.
         collector.ack(input);
         returnInstance(jedisCommand);
@@ -93,5 +100,6 @@ public class RedisUpdatesBolt extends AbstractRedisBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("user", "messageType"));
     }
 }

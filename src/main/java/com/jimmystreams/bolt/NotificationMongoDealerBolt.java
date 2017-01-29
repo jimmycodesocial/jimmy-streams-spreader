@@ -88,13 +88,15 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
     private Document buildNotificationUpdatedDocument(String user, JSONObject activity) {
         Calendar cal = Calendar.getInstance();
 
+        JSONObject activityActor = (JSONObject)activity.get("actor");
+        Document actor = (new Document("$each", activityActor.getString("id"))).append("$position", 0);
         Document updated = (new Document())
                 .append("user", user)
                 .append("type", activity.getString("verb"))
                 .append("object", activity.get("object"))
                 .append("updatedAt", cal.getTime())
                 .append("$inc", new Document("times", 1)) //increment times aggregated
-                .append("$push", new Document("who", new Document("$position", 0)))
+                .append("$push", new Document("who", actor))
         ;
 
         if (activity.has("target")) {
