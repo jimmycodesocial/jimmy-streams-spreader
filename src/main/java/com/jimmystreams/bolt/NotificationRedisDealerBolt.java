@@ -16,15 +16,19 @@ public class NotificationRedisDealerBolt extends BaseRichBolt{
 
     private OutputCollector collector;
     private JedisCluster client;
-    private Set<HostAndPort> jedisClusterNodes;
+    private Map<String, Integer> jedisClusterNodes;
 
-    public NotificationRedisDealerBolt(Set<HostAndPort> nodes) {
+    public NotificationRedisDealerBolt(Map<String, Integer> nodes) {
         this.jedisClusterNodes = nodes;
     }
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.client = new JedisCluster(this.jedisClusterNodes);
+        Set<HostAndPort> nodes = new HashSet<>();
+        for (Map.Entry<String, Integer> entry : this.jedisClusterNodes.entrySet()) {
+            nodes.add(new HostAndPort(entry.getKey(), entry.getValue()));
+        }
+        this.client = new JedisCluster(nodes);
         this.collector = outputCollector;
     }
 

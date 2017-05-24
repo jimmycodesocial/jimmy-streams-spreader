@@ -8,6 +8,11 @@ package com.jimmystreams;
 
 import com.jimmystreams.bolt.*;
 import org.apache.storm.Config;
+import org.apache.storm.StormSubmitter;
+import org.apache.storm.generated.AlreadyAliveException;
+import org.apache.storm.generated.AuthorizationException;
+import org.apache.storm.generated.InvalidTopologyException;
+import org.apache.storm.generated.StormTopology;
 import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.topology.TopologyBuilder;
@@ -16,22 +21,20 @@ import org.apache.storm.LocalCluster;
 
 import com.jimmystreams.spout.SqsPoolSpout;
 import com.jimmystreams.mapper.ActivityMongoMapper;
-import redis.clients.jedis.HostAndPort;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
-class SpreaderTopology {
+class SpreaderTopology implements Serializable {
     private static Properties prop = new Properties();
 
     /**
      * Topology startup point.
      * Create, configure and submit the topology.
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InvalidTopologyException, AuthorizationException, AlreadyAliveException {
         // Read the configuration file
         prop.load(SpreaderTopology.class.getClassLoader().getResourceAsStream("configuration.properties"));
         TopologyBuilder builder = new TopologyBuilder();
@@ -62,11 +65,6 @@ class SpreaderTopology {
                         getMongoDBNotificationsCollection()
                 ), 1)
                 .shuffleGrouping("notification_audience");
-
-        // Publish notification through Redis
-        builder.setBolt("publish_notification",
-                new NotificationRedisDealerBolt(getRedisClusterInitialNodes()), 1)
-                .shuffleGrouping("notification_historic");
 
         // Save users interactions into the Social Graph
         String socialGraph = prop.getProperty("social_graph");
@@ -106,21 +104,30 @@ class SpreaderTopology {
 
         builder.setBolt("publish_notification",
                 new NotificationRedisDealerBolt(getRedisClusterInitialNodes()), 1)
+                .shuffleGrouping("notification_historic")
                 .shuffleGrouping("recent");
 
 
         // Submit the topology
-        LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology("spreader-topology", getTopologyConfig(), builder.createTopology());
+        Config conf = getTopologyConfig();
+        StormTopology topology = builder.createTopology();
 
-        try {
-            Thread.sleep(50000);
+        if (Integer.parseInt(prop.getProperty("production")) == 1) {
+            StormSubmitter.submitTopology("spreader-topology", conf, topology);
         }
-        catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        finally {
-            cluster.shutdown();
+        else {
+            LocalCluster cluster = new LocalCluster();
+            cluster.submitTopology("spreader-topology", conf, topology);
+
+            try {
+                Thread.sleep(50000);
+            }
+            catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            finally {
+                cluster.shutdown();
+            }
         }
     }
 
@@ -197,10 +204,9 @@ class SpreaderTopology {
         return configBuilder.build();
     }
 
-    private static Set<HostAndPort> getRedisClusterInitialNodes() {
-        Set<HostAndPort> nodes = new HashSet<>();
-        nodes.add(new HostAndPort(prop.getProperty("redis_host"), Integer.valueOf(prop.getProperty("redis_port"))));
-
+    private static Map<String, Integer> getRedisClusterInitialNodes() {
+        Map<String, Integer> nodes = new HashMap<>();
+        nodes.put(prop.getProperty("redis_host"), Integer.valueOf(prop.getProperty("redis_port")));
         return nodes;
     }
 
