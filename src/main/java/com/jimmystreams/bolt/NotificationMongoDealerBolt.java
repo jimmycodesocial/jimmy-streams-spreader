@@ -1,11 +1,10 @@
 package com.jimmystreams.bolt;
 
-import com.amazonaws.services.dynamodbv2.document.utils.ValueList;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.UpdateOptions;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -16,9 +15,7 @@ import org.apache.storm.tuple.Values;
 import org.bson.Document;
 import org.json.JSONObject;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 
 public class NotificationMongoDealerBolt extends BaseRichBolt{
 
@@ -59,13 +56,13 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
         String user = tuple.getStringByField("user");
         JSONObject activity = (JSONObject)tuple.getValueByField("activity");
 
-        FindOneAndUpdateOptions options = new FindOneAndUpdateOptions();
+        UpdateOptions options = new UpdateOptions();
         options.upsert(true);
 
         Document filters = this.buildNotificationFilters(user, activity);
         Document updatedNotification = this.buildNotificationUpdatedDocument(user, activity);
 
-        this.collection.findOneAndUpdate(filters, updatedNotification, options);
+        this.collection.updateOne(filters, updatedNotification, options);
 
         this.collector.emit(tuple, new Values(user, NotificationMongoDealerBolt.NOTIFICATION_MESSAGE_TYPE));
 
@@ -88,19 +85,30 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
     private Document buildNotificationUpdatedDocument(String user, JSONObject activity) {
         Calendar cal = Calendar.getInstance();
 
-        JSONObject activityActor = (JSONObject)activity.get("actor");
-        Document actor = (new Document("$each", activityActor.getString("id"))).append("$position", 0);
-        Document updated = (new Document())
+        JSONObject activityActor = activity.getJSONObject("actor");
+        JSONObject activityObject = activity.getJSONObject("object");
+
+        List<String> userList = Arrays.asList(activityActor.getString("id"));
+        Document actor = (new Document("$each", userList)).append("$position", 0);
+        Document updateInfo = (new Document())
                 .append("user", user)
                 .append("type", activity.getString("verb"))
-                .append("object", activity.get("object"))
-                .append("updatedAt", cal.getTime())
+                .append("object", new Document("id", activityObject.getString("id"))
+                        .append("objectType", activityObject.getString("objectType")))
+                .append("updatedAt", cal.getTime());
+
+        Document updated = (new Document())
+                .append("$set", updateInfo)
                 .append("$inc", new Document("times", 1)) //increment times aggregated
                 .append("$push", new Document("who", actor))
         ;
 
         if (activity.has("target")) {
-            updated.append("target", activity.get("target"));
+            JSONObject  acivityTarget = activity.getJSONObject("target");
+            updated.append(
+                    "target", (new Document("id", acivityTarget.getString("id")))
+                        .append("objectType", acivityTarget.get("objectType"))
+            );
         }
 
         return updated;
