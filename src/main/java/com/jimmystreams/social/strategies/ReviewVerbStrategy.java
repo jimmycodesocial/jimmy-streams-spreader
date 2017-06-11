@@ -17,6 +17,12 @@ public class ReviewVerbStrategy extends BaseActivityVerbStrategy
     }
 
     @Override
+    protected JSONObject getActivitySocialObject(JSONObject activity)
+    {
+      return activity.getJSONObject("target");
+    }
+
+    @Override
     protected Boolean isVerbEdgeable() {
         return true;
     }

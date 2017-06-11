@@ -1,14 +1,12 @@
 package com.jimmystreams.social;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 
 import java.io.IOException;
 import org.apache.log4j.Logger;
 
-/**
- * Singleton connection with OrientDB
- */
 
 public class OrientDBGraph
 {
@@ -20,14 +18,14 @@ public class OrientDBGraph
      * @param user Database user
      * @param password User password
      * @return OrientGraph Instance
-     * @throws IOException
+     * @throws IOException Exception
      */
     static public OrientGraph create(String dsn, String user, String password) throws IOException
     {
         logger.info("Trying to create a new instance of OrientGraph");
 
         // Create & open the database
-        ODatabaseDocumentTx database = new ODatabaseDocumentTx(dsn);
+        ODatabaseDocumentTx database = new ODatabaseDocumentTx(dsn, true);
         database.open(user, password);
 
         // Create the graph instance
@@ -36,6 +34,7 @@ public class OrientDBGraph
 
         graph.setStandardElementConstraints(false);
         logger.info("Activate the object to the current thread");
+        graph.setThreadMode(OrientConfigurableGraph.THREAD_MODE.AUTOSET_IFNULL);
         graph.makeActive();
         return graph;
     }

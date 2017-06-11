@@ -52,9 +52,12 @@ abstract class BaseActivityVerbStrategy implements ActivityVerbStrategy
 
         // Handle Object in Activity
         OrientVertex object = null;
-        if (this.existObjectTypeInGraph(activity.getJSONObject("object")))
+
+
+        JSONObject activityObject = this.getActivitySocialObject(activity);
+
+        if (this.existObjectTypeInGraph(activityObject))
         {
-            JSONObject activityObject = activity.getJSONObject("object");
             object = this.findOrCreateVertex(activityObject, this.getVertexClass(activityObject));
 
             // Check if the relation between actor and object exist or if it needs to be created.
@@ -126,8 +129,6 @@ abstract class BaseActivityVerbStrategy implements ActivityVerbStrategy
 
     protected OrientVertex findOrCreateVertex(JSONObject item, String targetClass)
     {
-
-
         Iterable<Vertex> vertices = graph.getVertices(targetClass, new String[] {"id"}, new Object[] {item.get("id")});
         OrientVertex vertex;
 
@@ -154,5 +155,10 @@ abstract class BaseActivityVerbStrategy implements ActivityVerbStrategy
                 link.setProperty("score", ++score);
             }
         }
+    }
+
+    protected JSONObject getActivitySocialObject(JSONObject activity)
+    {
+        return activity.getJSONObject("object");
     }
 }
