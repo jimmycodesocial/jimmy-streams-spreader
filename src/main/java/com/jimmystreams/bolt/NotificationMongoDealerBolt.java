@@ -97,19 +97,19 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
                         .append("objectType", activityObject.getString("objectType")))
                 .append("updatedAt", cal.getTime());
 
+        if (activity.has("target")) {
+            JSONObject acivityTarget = activity.getJSONObject("target");
+            updateInfo.append(
+                    "target", (new Document("id", acivityTarget.getString("id")))
+                            .append("objectType", acivityTarget.get("objectType"))
+            );
+        }
+
         Document updated = (new Document())
                 .append("$set", updateInfo)
                 .append("$inc", new Document("times", 1)) //increment times aggregated
                 .append("$push", new Document("who", actor))
         ;
-
-        if (activity.has("target")) {
-            JSONObject  acivityTarget = activity.getJSONObject("target");
-            updated.append(
-                    "target", (new Document("id", acivityTarget.getString("id")))
-                        .append("objectType", acivityTarget.get("objectType"))
-            );
-        }
 
         return updated;
     }
