@@ -9,12 +9,10 @@ package com.jimmystreams;
 import com.jimmystreams.bolt.*;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
-import org.apache.storm.generated.AlreadyAliveException;
-import org.apache.storm.generated.AuthorizationException;
-import org.apache.storm.generated.InvalidTopologyException;
-import org.apache.storm.generated.StormTopology;
+import org.apache.storm.generated.*;
 import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
+import org.apache.storm.thrift.TException;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.mongodb.bolt.MongoInsertBolt;
 import org.apache.storm.LocalCluster;
@@ -34,7 +32,7 @@ class SpreaderTopology implements Serializable {
      * Topology startup point.
      * Create, configure and submit the topology.
      */
-    public static void main(String[] args) throws IOException, InvalidTopologyException, AuthorizationException, AlreadyAliveException {
+    public static void main(String[] args) throws IOException, TException{
         // Read the configuration file
         prop.load(SpreaderTopology.class.getClassLoader().getResourceAsStream("configuration.properties"));
         TopologyBuilder builder = new TopologyBuilder();
@@ -113,11 +111,20 @@ class SpreaderTopology implements Serializable {
         StormTopology topology = builder.createTopology();
 
         if (Integer.parseInt(prop.getProperty("production")) == 1) {
-            StormSubmitter.submitTopology("spreader-topology", conf, topology);
+
+            List<String> seeds = new ArrayList<>();
+            seeds.add(prop.getProperty("nimbus_ip"));
+            conf.put(Config.NIMBUS_SEEDS, seeds);
+
+            conf.put(Config.NIMBUS_THRIFT_PORT, Integer.parseInt(prop.getProperty("nimbus_port")));
+
+            conf.setNumWorkers(1);
+            conf.setMaxSpoutPending(5000);
+            StormSubmitter.submitTopology(prop.getProperty("topology"), conf, topology);
         }
         else {
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology("spreader-topology", conf, topology);
+            cluster.submitTopology(prop.getProperty("topology"), conf, topology);
 
             try {
                 Thread.sleep(50000);
@@ -237,16 +244,6 @@ class SpreaderTopology implements Serializable {
         return prop.getProperty(String.format("%s_orientdb_password", graph));
     }
 
-
-    /**
-     * AWS SNS Notification Topic
-     *
-     * @return The password.
-     */
-    private static String getSNSNotificationTopic() {
-        return prop.getProperty(String.format("sns_notification_topic"));
-    }
-
     /**
      * Runtime topology configuration.
      *
@@ -262,6 +259,8 @@ class SpreaderTopology implements Serializable {
         // Spout interaction with SQS queue.
         conf.put("sqs_sleep_time", Integer.valueOf(prop.getProperty("sqs_sleep_time")));
         conf.put("sqs_batch", Integer.valueOf(prop.getProperty("sqs_batch")));
+        conf.put("access_key", prop.getProperty("access_key"));
+        conf.put("secret_key", prop.getProperty("secret_key"));
 
         // Size of requests to OrientDB.
         conf.put("stream_orientdb_batch", Integer.valueOf(prop.getProperty("stream_orientdb_batch")));
