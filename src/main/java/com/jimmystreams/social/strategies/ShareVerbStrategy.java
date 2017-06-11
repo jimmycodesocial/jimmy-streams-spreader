@@ -23,6 +23,12 @@ public class ShareVerbStrategy extends BaseActivityVerbStrategy
     }
 
     @Override
+    protected JSONObject getActivitySocialObject(JSONObject activity)
+    {
+        return activity.getJSONObject("target");
+    }
+
+    @Override
     protected Boolean existObjectTypeInGraph(JSONObject object) {
         String type = object.getString("objectType");
         return type.equals("post") || type.equals("article");
