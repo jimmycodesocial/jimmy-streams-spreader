@@ -42,7 +42,7 @@ abstract class BaseActivityVerbStrategy implements ActivityVerbStrategy
     public void handleActivity(JSONObject activity)
     {
         // Handle Actor in Activity
-        JSONObject activityActor = (JSONObject)activity.get("actor");
+        JSONObject activityActor = activity.getJSONObject("actor");
         OrientVertex actor = this.findOrCreateVertex(activityActor, this.getVertexClass(activityActor));
 
         // Update actor reputation based on the activity verb
@@ -52,9 +52,9 @@ abstract class BaseActivityVerbStrategy implements ActivityVerbStrategy
 
         // Handle Object in Activity
         OrientVertex object = null;
-        if (this.existObjectTypeInGraph((JSONObject)activity.get("object")))
+        if (this.existObjectTypeInGraph(activity.getJSONObject("object")))
         {
-            JSONObject activityObject = (JSONObject)activity.get("object");
+            JSONObject activityObject = activity.getJSONObject("object");
             object = this.findOrCreateVertex(activityObject, this.getVertexClass(activityObject));
 
             // Check if the relation between actor and object exist or if it needs to be created.
