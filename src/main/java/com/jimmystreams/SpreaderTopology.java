@@ -83,12 +83,17 @@ class SpreaderTopology implements Serializable {
                         getOrientDBPassword(streamGraph)
                 ), 3)
                 .setNumTasks(6)
-                .shuffleGrouping("audience");
+                .shuffleGrouping("audience", "timeline");
+        // Store activity logs for explicit audience in other collection
+        builder.setBolt("activityLog",
+                new MongoInsertBolt(getMongoDBDsn(), getMongoDBActivitiesCollection(), new ActivityMongoMapper()), 4)
+                .setNumTasks(8)
+                .shuffleGrouping("audience", "activityLog");
 
         // Store the activity as historical for the streams.
         // This bolt can have a little delay storing the activities.
-        builder.setBolt("historical",
-                new MongoInsertBolt(getMongoDBDsn(), getMongoDBActivitiesCollection(), new ActivityMongoMapper()), 4)
+        builder.setBolt("timeline",
+                new MongoInsertBolt(getMongoDBDsn(), getMongoDBTimeLineCollection(), new ActivityMongoMapper()), 4)
                 .setNumTasks(8)
                 .shuffleGrouping("subscriptions");
 
@@ -157,6 +162,15 @@ class SpreaderTopology implements Serializable {
      */
     private static String getMongoDBActivitiesCollection() {
         return prop.getProperty("mongodb_activities_collection");
+    }
+
+    /**
+     * MongoDB collection where activities will be stored.
+     *
+     * @return The MongoDB collection name
+     */
+    private static String getMongoDBTimeLineCollection() {
+        return prop.getProperty("mongodb_timeline_collection");
     }
 
     /**
