@@ -18,6 +18,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import org.apache.storm.tuple.Values;
+import org.bson.Document;
 import org.json.JSONObject;
 
 import java.util.HashMap;
@@ -61,21 +62,26 @@ import java.util.Map;
 
     @Override
     public void execute(Tuple input) {
-        String audience = input.getStringByField("stream");
+        Document stream = (Document)input.getValueByField("stream");
         JSONObject activity = (JSONObject)input.getValueByField("activity");
 
-        logger.info(String.format("Find streams subscribed to %s", audience));
+        logger.info(String.format("Find streams subscribed to %s", stream.getString("id")));
 
         int page = 0;
         List<ODocument> results;
 
         do {
-            results = paginateSubscriptions(audience, false, page, this.batch);
+            results = paginateSubscriptions(stream.getString("id"), false, page, this.batch);
             page++;
             for (ODocument o : results) {
                 this._collector.emit(input, new Values(o.<String>field("id"), activity));
             }
         } while (results.size() == this.batch);
+
+        // If need persistence, save the stream in Redis & Mongo
+        if (stream.getBoolean("persist")) {
+            this._collector.emit(input, new Values(stream.getString("id"), activity));
+        }
 
         this._collector.ack(input);
     }
