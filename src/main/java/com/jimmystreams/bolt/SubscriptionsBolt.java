@@ -74,7 +74,9 @@ import java.util.Map;
             results = paginateSubscriptions(stream.getString("id"), false, page, this.batch);
             page++;
             for (ODocument o : results) {
-                this._collector.emit(input, new Values(o.<String>field("id"), activity));
+                if (!activity.getJSONObject("actor").getString("id").equals(o.<String>field("id"))) {
+                    this._collector.emit(input, new Values(o.<String>field("id"), activity));
+                }
             }
         } while (results.size() == this.batch);
 
