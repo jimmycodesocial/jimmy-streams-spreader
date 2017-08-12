@@ -52,6 +52,6 @@ public class ActivityMongoMapper implements MongoMapper {
 
         logger.info(String.format("Storing activity %s in historical list of stream %s", activity_id, stream));
 
-        return doc;
+        return new Document("$set", doc);
     }
 }

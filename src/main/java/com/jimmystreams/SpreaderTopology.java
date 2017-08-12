@@ -7,18 +7,21 @@
 package com.jimmystreams;
 
 import com.jimmystreams.bolt.*;
+import com.mongodb.client.model.Filters;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
 import org.apache.storm.generated.*;
+import org.apache.storm.mongodb.bolt.MongoUpdateBolt;
+import org.apache.storm.mongodb.common.QueryFilterCreator;
 import org.apache.storm.redis.common.config.JedisClusterConfig;
 import org.apache.storm.redis.common.config.JedisPoolConfig;
 import org.apache.storm.thrift.TException;
 import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.mongodb.bolt.MongoInsertBolt;
 import org.apache.storm.LocalCluster;
 
 import com.jimmystreams.spout.SqsPoolSpout;
 import com.jimmystreams.mapper.ActivityMongoMapper;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -85,15 +88,42 @@ class SpreaderTopology implements Serializable {
                 .setNumTasks(6)
                 .shuffleGrouping("audience", "timeline");
         // Store activity logs for explicit audience in other collection
-        builder.setBolt("activityLog",
-                new MongoInsertBolt(getMongoDBDsn(), getMongoDBActivitiesCollection(), new ActivityMongoMapper()), 4)
+
+        // Filters to update or create an activity on Mongo Collection
+        QueryFilterCreator updateQueryFilters = (QueryFilterCreator) tuple -> {
+
+            // Get data needed form Tuple
+            JSONObject activity = (JSONObject)tuple.getValueByField("activity");
+            String stream = tuple.getValueByField("stream").toString();
+
+            return Filters.and(
+                    Filters.eq("aid", activity.getString("aid")),
+                    Filters.eq("stream", stream)
+            );
+        };
+
+        MongoUpdateBolt activityLogBolt = new MongoUpdateBolt(
+                getMongoDBDsn(),
+                getMongoDBActivitiesCollection(),
+                updateQueryFilters,
+                new ActivityMongoMapper()
+        );
+        activityLogBolt.withUpsert(true);
+
+        builder.setBolt("activityLog", activityLogBolt, 4)
                 .setNumTasks(8)
                 .shuffleGrouping("audience", "activityLog");
 
         // Store the activity as historical for the streams.
-        // This bolt can have a little delay storing the activities.
-        builder.setBolt("timeline",
-                new MongoInsertBolt(getMongoDBDsn(), getMongoDBTimeLineCollection(), new ActivityMongoMapper()), 4)
+
+        MongoUpdateBolt timelineBolt = new MongoUpdateBolt(
+                getMongoDBDsn(),
+                getMongoDBTimeLineCollection(),
+                updateQueryFilters,
+                new ActivityMongoMapper()
+        );
+        timelineBolt.withUpsert(true);
+        builder.setBolt("timeline", timelineBolt, 4)
                 .setNumTasks(8)
                 .shuffleGrouping("subscriptions");
 
@@ -132,7 +162,7 @@ class SpreaderTopology implements Serializable {
             cluster.submitTopology(prop.getProperty("topology"), conf, topology);
 
             try {
-                Thread.sleep(50000);
+                Thread.sleep(500000);
             }
             catch (InterruptedException e) {
                 e.printStackTrace();
