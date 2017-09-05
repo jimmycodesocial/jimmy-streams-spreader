@@ -21,9 +21,10 @@ import org.apache.storm.tuple.Values;
 import org.bson.Document;
 import org.json.JSONObject;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  * Bolt that listen for audiences and retrieve the list of streams subscribed to the audience.
@@ -70,8 +71,18 @@ import java.util.Map;
         int page = 0;
         List<ODocument> results;
 
+        DateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'", Locale.ENGLISH);
+        Date published = new Date();
+
+        try {
+            published = date_format.parse(activity.getString("published"));
+        } catch (ParseException e) {
+            logger.warn(String.format("Error parsing date from activity <%s>", activity.getString("published")));
+            logger.warn("Use <new Date()> instead");
+        }
+
         do {
-            results = paginateSubscriptions(stream.getString("id"), false, page, this.batch);
+            results = paginateSubscriptions(stream.getString("id"), false, published, page, this.batch);
             page++;
             for (ODocument o : results) {
                 if (!activity.getJSONObject("actor").getString("id").equals(o.<String>field("id"))) {
@@ -88,10 +99,11 @@ import java.util.Map;
         this._collector.ack(input);
     }
 
-    protected List<ODocument> paginateSubscriptions(String stream, boolean notification, int page, int amount) {
+    protected List<ODocument> paginateSubscriptions(String stream, boolean notification, Date published, int page, int amount) {
         Map<String, Object> params = new HashMap<>();
         params.put("starter", stream);
         params.put("notification", notification);
+        params.put("time_mark", published.getTime());
         params.put("offset", page * amount);
         params.put("quantity", amount);
 
