@@ -9,7 +9,12 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.json.JSONObject;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class NotificationAudienceBolt extends SubscriptionsBolt {
@@ -38,8 +43,18 @@ public class NotificationAudienceBolt extends SubscriptionsBolt {
     private void findSubscriptionsAndEmitTuple(Tuple tuple, JSONObject activity, String stream) {
         List<ODocument> results;
         int page = 0;
+
+        DateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.S'Z'", Locale.ENGLISH);
+        Date published = new Date();
+
+        try {
+            published = date_format.parse(activity.getString("published"));
+        } catch (ParseException e) {
+            logger.warn(String.format("Error parsing date from activity <%s>", activity.getString("published")));
+            logger.warn("Use <new Date()> instead");
+        }
         do {
-            results = paginateSubscriptions(stream, true, page, this.batch);
+            results = paginateSubscriptions(stream, true, published, page, this.batch);
             page++;
             for (ODocument o : results) {
                 if (!activity.getJSONObject("actor").getString("id").equals(o.<String>field("id"))) {
