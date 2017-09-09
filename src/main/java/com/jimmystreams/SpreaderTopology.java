@@ -162,7 +162,7 @@ class SpreaderTopology implements Serializable {
             cluster.submitTopology(prop.getProperty("topology"), conf, topology);
 
             try {
-                Thread.sleep(500000);
+                Thread.sleep(5000000);
             }
             catch (InterruptedException e) {
                 e.printStackTrace();

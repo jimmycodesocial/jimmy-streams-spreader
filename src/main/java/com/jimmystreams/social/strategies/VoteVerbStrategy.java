@@ -24,7 +24,7 @@ public class VoteVerbStrategy extends BaseActivityVerbStrategy
 
     @Override
     protected Boolean existObjectTypeInGraph(JSONObject object) {
-        return object.getString("objectType").equals("post") ||object.getString("objectType").equals("article") ;
+        return object.getString("objectType").equals("post") || object.getString("objectType").equals("article") ;
     }
 
     @Override
@@ -44,6 +44,15 @@ public class VoteVerbStrategy extends BaseActivityVerbStrategy
 
         double score = object.getProperty("score");
         object.setProperty("score", score + likeValue * REPUTATION_FACTOR * 1.0);
+    }
+
+    @Override
+    protected JSONObject getActivitySocialObject(JSONObject activity)
+    {
+        JSONObject object =  activity.getJSONObject("object");
+        object.put("objectType", "article");
+
+        return object;
     }
 
 }
