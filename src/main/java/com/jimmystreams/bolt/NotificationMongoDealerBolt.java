@@ -13,6 +13,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.json.JSONObject;
 
 import java.util.*;
@@ -91,7 +92,7 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
         List<String> userList = Arrays.asList(activityActor.getString("id"));
         Document actor = (new Document("$each", userList)).append("$position", 0);
         Document updateInfo = (new Document())
-                .append("user", user)
+                .append("user", new ObjectId(user))
                 .append("type", activity.getString("verb"))
                 .append("object", new Document("id", activityObject.getString("id"))
                         .append("objectType", activityObject.getString("objectType")))
