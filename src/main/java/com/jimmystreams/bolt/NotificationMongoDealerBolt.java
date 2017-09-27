@@ -54,7 +54,7 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
 
     @Override
     public void execute(Tuple tuple) {
-        String user = tuple.getStringByField("user");
+        JSONObject user = (JSONObject)tuple.getValueByField("user");
         JSONObject activity = (JSONObject)tuple.getValueByField("activity");
 
         UpdateOptions options = new UpdateOptions();
@@ -65,25 +65,25 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
 
         this.collection.updateOne(filters, updatedNotification, options);
 
-        this.collector.emit(tuple, new Values(user, NotificationMongoDealerBolt.NOTIFICATION_MESSAGE_TYPE));
+        this.collector.emit(tuple, new Values(user.getString("id"), NotificationMongoDealerBolt.NOTIFICATION_MESSAGE_TYPE));
 
         this.collector.ack(tuple);
     }
 
-    private Document buildNotificationFilters(String user, JSONObject activity) {
+    private Document buildNotificationFilters(JSONObject user, JSONObject activity) {
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.HOUR, -1 * TIME_WINDOW_SIZE);
         Date fromDate = cal.getTime();
 
         return (new Document())
-                .append("user", user)
-                .append("type", activity.getString("verb"))
+                .append("user", new ObjectId(user.getString("id")))
+                .append("type", user.getString("notificationType"))
                 .append("object.id", ((JSONObject)activity.get("object")).getString("id"))
                 .append("updatedAt", new Document("$gte", fromDate))
         ;
     }
 
-    private Document buildNotificationUpdatedDocument(String user, JSONObject activity) {
+    private Document buildNotificationUpdatedDocument(JSONObject user, JSONObject activity) {
         Calendar cal = Calendar.getInstance();
 
         JSONObject activityActor = activity.getJSONObject("actor");
@@ -92,8 +92,8 @@ public class NotificationMongoDealerBolt extends BaseRichBolt{
         List<String> userList = Arrays.asList(activityActor.getString("id"));
         Document actor = (new Document("$each", userList)).append("$position", 0);
         Document updateInfo = (new Document())
-                .append("user", new ObjectId(user))
-                .append("type", activity.getString("verb"))
+                .append("user", new ObjectId(user.getString("id")))
+                .append("type", user.getString("notificationType"))
                 .append("object", new Document("id", activityObject.getString("id"))
                         .append("objectType", activityObject.getString("objectType")))
                 .append("updatedAt", cal.getTime());
