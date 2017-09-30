@@ -18,8 +18,7 @@ import org.apache.log4j.Logger;
 import org.bson.Document;
 import org.json.JSONObject;
 import org.json.JSONArray;
-
-import java.util.Map;
+import java.util.*;
 
 /**
  * Bolt that listen for activities and extract the implicit and explicit audiences.
@@ -32,8 +31,9 @@ import java.util.Map;
  * see: http://activitystrea.ms/specs/json/targeting/1.0/#properties
  */
 public class AudienceBolt extends BaseRichBolt {
-    private String[] implicitAudiences = {"actor"};
-    private String[] explicitAudiences = {"to", "bto", "cc", "bcc"};
+    private String[] implicitAudiences = new String[]{"actor"};
+    private String[] explicitAudiences = new String[]{"to", "bto", "cc", "bcc"};
+    private HashSet<Object> ignoreVerbs = new HashSet<>(Arrays.asList(new String[] {"read"}));
     private OutputCollector _collector;
 
     private final static Logger logger = Logger.getLogger(AudienceBolt.class);
@@ -55,31 +55,40 @@ public class AudienceBolt extends BaseRichBolt {
         JSONObject activity = (JSONObject)input.getValueByField("activity");
         String activity_id = activity.getString("aid");
 
-        for (String audience: this.implicitAudiences) {
-            if (activity.has(audience)) {
-                String streamId = activity.getJSONObject(audience).getString("id");
-                logger.info(String.format("Audience %s for activity %s", streamId, activity_id));
+        // Ignore activities
+        if (!this.ignoreActivity(activity)) {
 
-                Document stream = new Document("id", streamId).append("persist", false);
-                this._collector.emit("timeline", input, new Values(stream, activity));
-            }
-        }
-
-        // Explicit audiences are lists.
-        // Save in mongoDB explicit audience
-        for (String audience: this.explicitAudiences) {
-            if (activity.has(audience)) {
-                JSONArray list = activity.getJSONArray(audience);
-                for (Object aud: list) {
-                    String streamId = ((JSONObject)aud).getString("id");
-                    String streamType = ((JSONObject)aud).getString("objectType");
+            for (String audience : this.implicitAudiences) {
+                if (activity.has(audience)) {
+                    String streamId = activity.getJSONObject(audience).getString("id");
                     logger.info(String.format("Audience %s for activity %s", streamId, activity_id));
 
-                    Document stream = new Document("id", streamId).append("persist", true);
+                    Document stream = new Document("id", streamId).append("persist", false);
                     this._collector.emit("timeline", input, new Values(stream, activity));
+                }
+            }
 
-                    if (streamType.toLowerCase().equals("user")) {
-                      this._collector.emit("activityLog", input, new Values(streamId, activity));
+            // Include audience by activity verb value
+            for (Document audience : this.getActivityAudienceByVerb(activity)) {
+                this._collector.emit("timeline", input, new Values(audience, activity));
+            }
+
+            // Explicit audiences are lists.
+            // Save in mongoDB explicit audience
+            for (String audience : this.explicitAudiences) {
+                if (activity.has(audience)) {
+                    JSONArray list = activity.getJSONArray(audience);
+                    for (Object aud : list) {
+                        String streamId = ((JSONObject) aud).getString("id");
+                        String streamType = ((JSONObject) aud).getString("objectType");
+                        logger.info(String.format("Audience %s for activity %s", streamId, activity_id));
+
+                        Document stream = new Document("id", streamId).append("persist", true);
+                        this._collector.emit("timeline", input, new Values(stream, activity));
+
+                        if (streamType.toLowerCase().equals("user")) {
+                            this._collector.emit("activityLog", input, new Values(streamId, activity));
+                        }
                     }
                 }
             }
@@ -87,5 +96,23 @@ public class AudienceBolt extends BaseRichBolt {
 
         // Ack the tuple.
         this._collector.ack(input);
+    }
+
+    private Document[] getActivityAudienceByVerb(JSONObject activity)
+    {
+        switch(activity.getString("verb"))
+        {
+            case "review":
+                return new Document[]{
+                        new Document("id", activity.getJSONObject("target").getString("id"))
+                                .append("persist", false)
+                };
+            default:
+                return new Document[]{};
+        }
+    }
+
+    private boolean ignoreActivity(JSONObject activity) {
+        return this.ignoreVerbs.contains(activity.getString("verb"));
     }
 }
