@@ -33,7 +33,7 @@ import java.util.*;
 public class AudienceBolt extends BaseRichBolt {
     private String[] implicitAudiences = new String[]{"actor"};
     private String[] explicitAudiences = new String[]{"to", "bto", "cc", "bcc"};
-    private HashSet<Object> ignoreVerbs = new HashSet<>(Arrays.asList(new String[] {"read"}));
+    private HashSet<Object> ignoreVerbs = new HashSet<>(Arrays.asList(new String[] {"read", "unfollow"}));
     private OutputCollector _collector;
 
     private final static Logger logger = Logger.getLogger(AudienceBolt.class);
